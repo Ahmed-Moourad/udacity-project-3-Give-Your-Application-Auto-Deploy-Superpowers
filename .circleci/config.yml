@@ -104,6 +104,7 @@ jobs:
     docker:
       - image: 'cimg/base:stable'
     steps:
+      - run: return 1
       - slack/notify:
           custom: |
             {
@@ -113,14 +114,14 @@ jobs:
                   "fields": [
                     {
                       "type": "plain_text",
-                      "text": "*This is a text notification*",
+                      "text": "*This is a notification for failed job*",
                       "emoji": true
                     }
                   ]
                 }
               ]
             }
-          event: always
+          event: always #you can change this to "fail" to send notifications only when job fails
  
             
 
