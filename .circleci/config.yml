@@ -5,20 +5,22 @@ orbs:
 jobs:
   build-frontend:
     docker:
-      - image: circleci/node:13.8.0
+      # - image: circleci/node:13.8.0
+      - image: 'cimg/base:stable'
+
     steps:
-      - checkout
-      - restore_cache:
-          keys: [frontend-build]
-      - run:
-          name: Build front-end
-          command: |
-            cd frontend
-            npm install
-            npm run build
-      - save_cache:
-          paths: [frontend/node_modules]
-          key: frontend-build
+      # - checkout
+      # - restore_cache:
+      #     keys: [frontend-build]
+      # - run:
+      #     name: Build front-end
+      #     command: |
+      #       cd frontend
+      #       npm install
+      #       npm run build
+      # - save_cache:
+      #     paths: [frontend/node_modules]
+      #     key: frontend-build
 
       - run: return 1
 
@@ -124,7 +126,8 @@ jobs:
 workflows:
   default:
     jobs:
-      - build-frontend
+      - build-frontend:
+          context: slack-secrets
       # - build-backend
       # - test-frontend:
       #     requires: [build-frontend]
