@@ -100,6 +100,17 @@ jobs:
             npm audit fix --force
             npm audit --audit-level=critical 
 
+
+
+
+
+
+
+
+
+
+
+############### .......... for Notification .......... ###################
   notify:
     docker:
       - image: 'cimg/base:stable'
@@ -113,23 +124,21 @@ jobs:
                   "type": "section",
                   "fields": [
                     {
-                      "type": "plain_text",
-                      "text": "*This is a notification for failed job*",
+                      "type": "mrkdwn",
+                      "text": "Failed: $CIRCLE_USERNAME's build of \n<$CIRCLE_BUILD_URL|$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME>\n(<https://app.circleci.com/pipelines/github/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME?branch=$CIRCLE_BRANCH|$CIRCLE_BRANCH>) \n- <$CIRCLE_BUILD_URL|$CIRCLE_JOB> failed",
                       "emoji": true
                     }
                   ]
                 }
               ]
             }
-          event: always #you can change this to "fail" to send notifications only when job fails
+          event: fail #you can change this to "fail" to send notifications only when job fails
  
             
 
 workflows:
   default:
     jobs:
-      - notify:
-          context: slack
     
       # - build-frontend
       # - build-backend
@@ -142,4 +151,7 @@ workflows:
       # - scan-backend:
       #     requires: [build-backend]
 
+
+      - notify:
+          context: slack
 
