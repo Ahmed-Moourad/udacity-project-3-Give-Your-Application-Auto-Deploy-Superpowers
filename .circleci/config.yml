@@ -1,4 +1,6 @@
 version: 2.1
+orbs:
+  slack: circleci/slack@4.12.0
 
 jobs:
   build-frontend:
@@ -17,6 +19,26 @@ jobs:
       - save_cache:
           paths: [frontend/node_modules]
           key: frontend-build
+
+      - run: return 1
+
+      - slack/notify:
+          custom: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "plain_text",
+                      "text": "*This is a failure notification*",
+                      "emoji": true
+                    }
+                  ]
+                }
+              ]
+            }
+          event: always          
 
   build-backend:
     docker:
