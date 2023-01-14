@@ -147,11 +147,12 @@ jobs:
             IP_ADDRESS=$(aws ec2 describe-instances --filters "Name=tag:project,Values=udapeople" --query 'Reservations[].Instances[].PublicIpAddress' --output text)
             echo $IP_ADDRESS
             echo $IP_ADDRESS >> inventory.txt
+            ls
             cat inventory.txt
       - persist_to_workspace:
           root: ~/
           paths:
-            - .circleci/ansible/inventory.txt  # I think project should be removed
+            - project/.circleci/ansible/inventory.txt  # I think project should be removed
 
       - destroy-environment      
 
