@@ -22,7 +22,6 @@
     #   apt:
     #     name: python3
     #     state: present
-  tasks:
     - name: Install Python
       package:
         name: python3
