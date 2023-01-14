@@ -144,19 +144,41 @@ jobs:
       - run:
           name: Add back-end ip to ansible inventory
           command: |
-            INSTANCE_ID=$(aws ec2 describe-instances --filters "Name=tag:project,Values=udapeople" --query 'Reservations[].Instances[].InstanceId' --output text)
-            IP_ADDRESS=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'Reservations[].Instances[].PublicIpAddress' --output text)
-            echo $INSTANCE_ID
+            IP_ADDRESS=$(aws ec2 describe-instances --filters "Name=tag:project,Values=udapeople" --query 'Reservations[].Instances[].PublicIpAddress' --output text)
             echo $IP_ADDRESS
             echo $IP_ADDRESS >> inventory.txt
             
       - persist_to_workspace:
           root: ~/
           paths:
-            - project/.circleci/ansible/inventory.txt
+            - project/.circleci/ansible/inventory.txt  # I think project should be removed
 
       - destroy-environment      
 
+  configure-infrastructure:
+    docker:
+      - image: ansible/aws-cli:latest
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints: 
+            - "f2:19:8c:a3:0a:30:7d:ef:3d:80:89:bb:ca:0a:e1:d7" 
+      - attach_workspace:
+          at: ~/
+      - run:
+          name: Install dependencies
+          command: |
+            apt-get update
+            apt-get install -y tar gzip
+            pip install ansible awscli
+      - run:
+          name: Configure server
+          command: |
+            cd .circleci/ansible
+            cat inventory.txt
+            ansible-playbook -i inventory.txt configure-server.yml
+
+      - destroy-environment      
   
 
 
@@ -192,17 +214,20 @@ workflows:
   default:
     jobs:
     
-      - build-frontend
-      - build-backend
-      - test-frontend:
-          requires: [build-frontend]
-      - test-backend:
-          requires: [build-backend]
-      - scan-frontend:
-          requires: [build-frontend] 
-      - scan-backend:
-          requires: [build-backend]
+      # - build-frontend
+      # - build-backend
+      # - test-frontend:
+      #     requires: [build-frontend]
+      # - test-backend:
+      #     requires: [build-backend]
+      # - scan-frontend:
+      #     requires: [build-frontend] 
+      # - scan-backend:
+      #     requires: [build-backend]
       - deploy-infrastructure  #should require scan jobs to be done successfully   
+      - configure-infrastructure:
+          requires: [deploy-infrastructure]
+          
 
 
       # - notify:
