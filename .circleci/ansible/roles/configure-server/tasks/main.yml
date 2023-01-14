@@ -1,25 +1,16 @@
 ---
-- name: "update apt packages."
-  become: yes
+- name: Update packages
   apt:
+    name: "*"
+    state: latest
     update_cache: yes
 
-- name: "upgrade packages"
-  become: yes
+- name: Install Node.js and npm
   apt:
-    upgrade: yes
-
-- name: "install dependencies"
-  become: yes
-  apt:
-    name: "{{ packages }}"
-  vars:
-    packages:
-      - nodejs
-      - npm
+    name: nodejs
+    state: present
 
 - name: Install pm2
-  become: true
   npm:
     name: pm2
     global: yes
