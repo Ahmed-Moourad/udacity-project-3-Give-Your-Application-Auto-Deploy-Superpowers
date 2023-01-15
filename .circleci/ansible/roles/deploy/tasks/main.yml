@@ -1,6 +1,5 @@
 ---
 - name: Create web directory
-  become: true
   file:
     path: "~/backend-app"
     state: directory
@@ -10,7 +9,6 @@
   unarchive:
     src: artifact.tar.gz
     dest: ~/backend-app
-    remote_src: true
 
 - name: Install npm dependencies
   npm:
