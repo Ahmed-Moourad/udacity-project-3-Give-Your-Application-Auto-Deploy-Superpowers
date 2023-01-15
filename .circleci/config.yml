@@ -214,11 +214,11 @@ jobs:
       - run:
           name: Install dependencies
           command: |
-            apt-get clean
-            apt-get update
-            apt-get install -y python3-pip
+            sudo apt-get clean
+            sudo apt-get update
+            sudo apt-get install -y python3-pip
             pip3 install ansible
-            apt-get install -y nodejs npm
+            sudo apt-get install -y nodejs npm
             npm install -g aws-cli
       - run:
           name: Get backend url
