@@ -15,6 +15,20 @@ commands:
             aws cloudformation delete-stack --stack-name "udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}"
             aws cloudformation delete-stack --stack-name "udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}"
             
+  revert-migrations:
+    description: Revert your last migration
+    steps:
+      - run:
+          name: Revert migrations
+          when: on_fail
+          command: |
+            Check=$(curl --insecure  https://kvdb.io/${KVDB_BUCKET}/migration_${CIRCLE_WORKFLOW_ID:0:7})
+            if (( $Check == 1 ));
+            then
+              cd ~/project/backend
+              npm install
+              npm run migration:revert
+            fi
 
 
 
@@ -181,7 +195,7 @@ jobs:
   
   run-migrations:       # ERORRS here comes from Database (make sure it's avilable and connect to it && make the jobs runs Sequentially )  and KVDB (refresh the bucket you created there)
     docker:
-      - image: "circleci/node:13.8.0"
+      - image: "cimg/node:13.8.0"
     steps:
       - checkout 
       - restore_cache:
@@ -203,15 +217,15 @@ jobs:
             if grep -q "has been executed successfully." ~/project/backend/migrations_dump.txt
             then
                 # If you are using kvdb.io, generate the bucket ID "36fnMx215JkM5CQbjpMZ2T" in your local terminal first
-                curl https://kvdb.io/Qm8W83NostYNj3uhPWpZPH/migration_${CIRCLE_WORKFLOW_ID:0:7}  -d '1'
+                curl https://kvdb.io/${KVDB_BUCKET}/migration_${CIRCLE_WORKFLOW_ID:0:7}  -d '1'
             fi
      # Here's where you will add some code to rollback on failure      
       - destroy-environment      
-
+      - revert-migrations
 
   deploy-frontend:
     docker:
-      - image: circleci/python:3.9
+      - image: cimg/base:stable
     steps:
       - checkout 
       - attach_workspace:
@@ -219,8 +233,17 @@ jobs:
       - run:
           name: Install dependencies
           command: |
-            apt-get update && apt-get install -y tar gzip ansible nodejs npm
-            pip install awscli
+            # install AWS CLI
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
+
+            # install node js
+            curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+            sudo apt install -y nodejs
+            sudo npm install --global n
+            sudo n 13.8.0
+
       - run:
           name: Get backend url
           command: |
@@ -239,11 +262,12 @@ jobs:
             aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --recursive
       # Here's where you will add some code to rollback on failure      
       - destroy-environment      
+      - revert-migrations
 
 
   deploy-backend:
     docker:
-      - image: python:3.9
+      - image: cimg/base:stable
     steps:
       - checkout
       - add_ssh_keys:
@@ -254,17 +278,32 @@ jobs:
       - run:
           name: Install dependencies
           command: |
-            apt-get update && apt-get install -y tar gzip ansible nodejs npm
-            pip install awscli
+            # install AWS CLI
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
+
+            # install node js
+            curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+            sudo apt install -y nodejs
+            sudo npm install --global n
+            sudo n 13.8.0
+
+            # install Ansible
+            sudo apt update
+            sudo apt install software-properties-common -y
+            sudo add-apt-repository --yes --update ppa:ansible/ansible
+            sudo apt install ansible -y            
       - run:
           name: Deploy backend
           command: |
             cd backend
-            npm i
+            npm install
             npm run build
             cd ..
             # Zip the directory
             tar -C backend -czvf artifact.tar.gz .
+            
             cd .circleci/ansible
             echo "Contents  of the inventory.txt file is -------"
             cat inventory.txt
@@ -272,7 +311,7 @@ jobs:
             
       # Here's where you will add some code to rollback on failure  
       - destroy-environment      
-
+      - revert-migrations
 
 
 
@@ -330,7 +369,7 @@ workflows:
 
       - deploy-backend:
           #requires: [configure-infrastructure]
-          requires: [deploy-frontend]
+          requires: [run-migrations]
 
 
           
