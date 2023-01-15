@@ -145,10 +145,8 @@ jobs:
           name: Add back-end ip to ansible inventory
           command: |
             IP_ADDRESS=$(aws ec2 describe-instances --filters "Name=tag:project,Values=udapeople" --query 'Reservations[].Instances[].PublicIpAddress' --output text)
-            echo $IP_ADDRESS
             echo $IP_ADDRESS >> ./.circleci/ansible/inventory.txt
-            ls
-            cat ./.circleci/ansible/inventory.txt
+
       - persist_to_workspace:
           root: ~/
           paths:
@@ -177,14 +175,105 @@ jobs:
           name: Configure server
           command: |
             cd .circleci/ansible
-            ls
-            cat inventory.txt
             ansible-playbook -i inventory.txt configure-server.yml
 
       - destroy-environment      
   
+  run-migrations:
+    docker:
+      - image: "circleci/node:13.8.0"
+    steps:
+      - checkout 
+      - run:
+          name: Run migrations
+          command: |
+            cd backend
+            npm install
+            # Run and save the migration output
+            npm run migrations > migrations_dump.txt
+
+      - run:
+          name: Send migration results to memstash
+          command: |
+            if grep -q "has been executed successfully." ~/project/backend/migrations_dump.txt
+            then
+                # If you are using kvdb.io, generate the bucket ID "36fnMx215JkM5CQbjpMZ2T" in your local terminal first
+                curl https://kvdb.io/36fnMx215JkM5CQbjpMZ2T/migration_${CIRCLE_WORKFLOW_ID:0:7}  -d '1'
+            fi
+     # Here's where you will add some code to rollback on failure      
+      - destroy-environment      
 
 
+  deploy-frontend:
+    docker:
+      - image: circleci/python:3.9
+    steps:
+      - checkout 
+      - attach_workspace:
+          at: ~/
+      - run:
+          name: Install dependencies
+          command: |
+            pip install -r requirements.txt
+            pip install ansible
+            curl -sL https://deb.nodesource.com/setup_15.x | bash - && apt-get install -y nodejs
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip awscliv2.zip && sudo ./aws/install
+            pytest
+      - run:
+          name: Get backend url
+          command: |
+            export BACKEND_IP=$(aws ec2 describe-instances --filters "Name=tag:project,Values=udapeople" --query 'Reservations[].Instances[].PublicIpAddress' --output text)
+            export API_URL="http://${BACKEND_IP}:3030"
+            echo "API_URL = ${API_URL}"
+            echo API_URL="http://${BACKEND_IP}:3030" >> frontend/.env
+            cat frontend/.env
+
+      - run:
+          name: Deploy frontend objects
+          command: |
+            cd frontend
+            npm install
+            npm run build
+            tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
+            aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --recursive
+      # Here's where you will add some code to rollback on failure      
+      - destroy-environment      
+
+  deploy-backend:
+    docker:
+      - image: python:3.9
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints: 
+            - "f2:19:8c:a3:0a:30:7d:ef:3d:80:89:bb:ca:0a:e1:d7" 
+      - attach_workspace:
+          at: ~/
+      - run:
+          name: Install dependencies
+          command: |
+            sudo apt-get update && sudo apt-get install -y tar gzip
+            pip install ansible awscli
+            curl -sL https://deb.nodesource.com/setup_15.x | bash - && apt-get install -y nodejs
+            npm install
+            pytest
+
+      - run:
+          name: Deploy backend
+          command: |
+            cd backend
+            npm i
+            npm run build
+            cd ..
+            # Zip the directory
+            tar -C backend -czvf artifact.tar.gz .
+            cd .circleci/ansible
+            echo "Contents  of the inventory.txt file is -------"
+            cat inventory.txt
+            ansible-playbook -i inventory.txt deploy-backend.yml
+            
+      # Here's where you will add some code to rollback on failure  
+      - destroy-environment      
 
 
 
@@ -217,19 +306,33 @@ workflows:
   default:
     jobs:
     
-      # - build-frontend
-      # - build-backend
-      # - test-frontend:
-      #     requires: [build-frontend]
-      # - test-backend:
-      #     requires: [build-backend]
-      # - scan-frontend:
-      #     requires: [build-frontend] 
-      # - scan-backend:
-      #     requires: [build-backend]
-      - deploy-infrastructure  #should require scan jobs to be done successfully   
+      - build-frontend
+      - build-backend
+      - test-frontend:
+          requires: [build-frontend]
+      - test-backend:
+          requires: [build-backend]
+      - scan-frontend:
+          requires: [build-frontend] 
+      - scan-backend:
+          requires: [build-backend]
+######## the above sequance is Okayyyy ######
+
+
+      - deploy-infrastructure:  #should require scan jobs to be done successfully 
+          requires: [scan-backend]
       - configure-infrastructure:
           requires: [deploy-infrastructure]
+      - run-migrations:
+          requires: [configure-infrastructure]
+
+      - deploy-frontend:
+          requires: [deploy-infrastructure] #need to confirm
+
+      - deploy-backend:
+          requires: [configure-infrastructure]
+
+
           
 
 

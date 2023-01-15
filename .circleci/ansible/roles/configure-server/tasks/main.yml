@@ -5,7 +5,7 @@
     state: latest
     update_cache: yes
 
-- name: Install Node.js and npm
+- name: Install Node.js
   apt:
     name: nodejs
     state: present
@@ -20,20 +20,4 @@
     name: pm2
     global: yes
 
-# - name: Create web directory
-#   become: true
-#   file:
-#     path: "~/web"
-#     state: directory
 
-# - name: Copy index test page
-#   become: true
-#   copy:
-#     src: index.js
-#     dest: "~/web/index.js"
-
-# - name: Start web server
-#   become: true
-#   command: pm2 start "~/web/index.js" -f
-
-  #this all from chatGPT
