@@ -13,6 +13,7 @@ commands:
           when: on_fail
           command: |
             aws cloudformation delete-stack --stack-name "udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}"
+            aws s3 rm s3://udapeople-<<parameters.Workflow_ID>> --recursive
             aws cloudformation delete-stack --stack-name "udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}"
             
   revert-migrations:
@@ -275,6 +276,8 @@ jobs:
             - "f2:19:8c:a3:0a:30:7d:ef:3d:80:89:bb:ca:0a:e1:d7" 
       - attach_workspace:
           at: ~/
+      - restore_cache:
+          keys: [backend-build]          
       - run:
           name: Install dependencies
           command: |
@@ -295,15 +298,23 @@ jobs:
             sudo add-apt-repository --yes --update ppa:ansible/ansible
             sudo apt install ansible -y            
       - run:
-          name: Deploy backend
+          name: packging backend
           command: |
             cd backend
             npm install
             npm run build
+            tar -czf artifact.tar.gz dist/* package*
+
             cd ..
-            # Zip the directory
-            tar -C backend -czvf artifact.tar.gz .
-            
+            cp backend/artifact.tar.gz .circleci/ansible/roles/deploy/files
+
+      - run:
+          name: Deploy backend
+          command: | 
+            export TYPEORM_MIGRATIONS_DIR=./migrations
+            export TYPEORM_ENTITIES=./modules/domain/**/*.entity{.ts,.js}
+            export TYPEORM_MIGRATIONS=./migrations/*.ts
+                                 
             cd .circleci/ansible
             echo "Contents  of the inventory.txt file is -------"
             cat inventory.txt
@@ -354,21 +365,19 @@ workflows:
       - scan-backend:
           requires: [build-backend]
 ######## the above sequance is Okayyyy ######
+ 
 
-
-      - deploy-infrastructure:  #should require scan jobs to be done successfully 
-          requires: [scan-backend]
+      - deploy-infrastructure:   
+          requires: [test-frontend, test-backend, scan-frontend, scan-backend]   #should require all scan jobs to be done successfully
       - configure-infrastructure:
           requires: [deploy-infrastructure]
       - run-migrations:
           requires: [configure-infrastructure]
 
       - deploy-frontend:
-          #requires: [deploy-infrastructure] #need to confirm
           requires: [run-migrations]
 
       - deploy-backend:
-          #requires: [configure-infrastructure]
           requires: [run-migrations]
 
 
