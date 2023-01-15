@@ -192,11 +192,15 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y awscli
       - run:
-          name: Run migrations
+          name: Run migrations1
           command: |
             cd backend
             npm install
-            # Run and save the migration output
+
+      - run:
+          name: Run migrations2
+          command: |
+
             npm run migrations > migrations_dump.txt
 
       - run:
@@ -323,20 +327,20 @@ workflows:
 ######## the above sequance is Okayyyy ######
 
 
-      - deploy-infrastructure:  #should require scan jobs to be done successfully 
-          requires: [scan-backend]
-      - configure-infrastructure:
-          requires: [deploy-infrastructure]
+      # - deploy-infrastructure:  #should require scan jobs to be done successfully 
+      #     requires: [scan-backend]
+      # - configure-infrastructure:
+      #     requires: [deploy-infrastructure]
       - run-migrations:
-          requires: [configure-infrastructure]
+          requires: [build-backend]
 
-      - deploy-frontend:
-          #requires: [deploy-infrastructure] #need to confirm
-          requires: [run-migrations]
+      # - deploy-frontend:
+      #     #requires: [deploy-infrastructure] #need to confirm
+      #     requires: [run-migrations]
 
-      - deploy-backend:
-          #requires: [configure-infrastructure]
-          requires: [deploy-frontend]
+      # - deploy-backend:
+      #     #requires: [configure-infrastructure]
+      #     requires: [deploy-frontend]
 
 
           
