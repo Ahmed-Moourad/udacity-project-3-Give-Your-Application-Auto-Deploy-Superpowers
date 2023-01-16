@@ -5,8 +5,6 @@ version: 2.1
 commands:
   destroy-environment:
     description: Destroy back-end and front-end cloudformation stacks given a workflow ID.
-    #parameters:
-      # Add parameter here   
     steps:
       - run:
           name: Destroy environments
@@ -31,6 +29,24 @@ commands:
               npm run migration:revert
             fi
 
+  notify:
+    description: send notification to your Slack workspace when a job fails
+    # use with image: 'cimg/base:stable'
+    steps:
+      - slack/notify:
+            event: fail
+            custom: | 
+              {
+                  "blocks": [
+                      {
+                          "type": "section",
+                          "text": {
+                              "type": "mrkdwn",
+                              "text": "Failed: $CIRCLE_USERNAME's build of \n<$CIRCLE_BUILD_URL|$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME>\n(<https://app.circleci.com/pipelines/github/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME?branch=$CIRCLE_BRANCH|$CIRCLE_BRANCH>) \n- <$CIRCLE_BUILD_URL|$CIRCLE_JOB> failed" 
+                          }
+                      }
+                  ]
+              }              
 
 
 jobs:
@@ -303,13 +319,10 @@ jobs:
             cd backend
             npm install
             npm run build
-            npm audit fix
             tar -czf artifact.tar.gz dist/* package*
 
             cd ..
             cp backend/artifact.tar.gz .circleci/ansible/roles/deploy/files
-            ls backend
-            ls .circleci/ansible/roles/deploy/files
 
       - run:
           name: Deploy backend
@@ -328,30 +341,64 @@ jobs:
       - revert-migrations
 
 
+  smoke-test:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: |
+            # install AWS CLI
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
+
+            # install node js
+            curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+            sudo apt install -y nodejs
+            sudo npm install --global n
+            sudo n 13.8.0
+
+      - run:
+          name: Get backend url
+          command: |
+            export BACKEND_IP=$(aws ec2 describe-instances --filters "Name=tag:project,Values=udapeople" --query 'Reservations[].Instances[].PublicIpAddress' --output text)
+            export API_URL="http://${BACKEND_IP}:3030"
+            echo "API_URL = ${API_URL}"
+      - run:
+          name: Backend smoke test.
+          command: |
+            if curl "${API_URL}/api/status" | grep "ok"
+            then
+                return 0
+            else
+                return 1
+            fi
+      - run:
+          name: Frontend smoke test.
+          command: |
+            URL="http://udapeople-${CIRCLE_WORKFLOW_ID:0:7}.s3-website-us-east-1.amazonaws.com/#/employees"            
+            echo ${URL} 
+            if curl -s ${URL} | grep "Welcome"
+            then
+                # Change this to 0 after the job fails
+              return 1
+            else
+              return 1
+            fi
+      # Here's where you will add some code to rollback on failure  
+      - destroy-environment      
+      - revert-migrations
 
 
 
 
-############### .......... for Notification .......... ###################
-  # notify:
-  #   docker:
-  #     - image: 'cimg/base:stable'
-  #   steps:
-  #     - run: return 1
-  #     - slack/notify:
-  #           event: fail
-  #           custom: | 
-  #             {
-  #                 "blocks": [
-  #                     {
-  #                         "type": "section",
-  #                         "text": {
-  #                             "type": "mrkdwn",
-  #                             "text": "Failed: $CIRCLE_USERNAME's build of \n<$CIRCLE_BUILD_URL|$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME>\n(<https://app.circleci.com/pipelines/github/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME?branch=$CIRCLE_BRANCH|$CIRCLE_BRANCH>) \n- <$CIRCLE_BUILD_URL|$CIRCLE_JOB> failed" 
-  #                         }
-  #                     }
-  #                 ]
-  #             }              
+
+
+
+
+   
 
 workflows:
   default:
@@ -385,8 +432,24 @@ workflows:
 
 
           
-
-
-      # - notify:
-      #     context: slack
+############### .......... for Notification .......... ###################
+  # notify:
+  #   docker:
+  #     - image: 'cimg/base:stable'
+  #   steps:
+  #     - run: return 1
+  #     - slack/notify:
+  #           event: fail
+  #           custom: | 
+  #             {
+  #                 "blocks": [
+  #                     {
+  #                         "type": "section",
+  #                         "text": {
+  #                             "type": "mrkdwn",
+  #                             "text": "Failed: $CIRCLE_USERNAME's build of \n<$CIRCLE_BUILD_URL|$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME>\n(<https://app.circleci.com/pipelines/github/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME?branch=$CIRCLE_BRANCH|$CIRCLE_BRANCH>) \n- <$CIRCLE_BUILD_URL|$CIRCLE_JOB> failed" 
+  #                         }
+  #                     }
+  #                 ]
+  #             }           
 
