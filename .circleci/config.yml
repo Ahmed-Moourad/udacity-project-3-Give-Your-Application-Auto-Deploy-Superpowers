@@ -415,8 +415,6 @@ workflows:
       - scan-backend:
           requires: [build-backend]
 ######## the above sequance is Okayyyy ######
- 
-
       - deploy-infrastructure:   
           requires: [test-frontend, test-backend, scan-frontend, scan-backend]   #should require all scan jobs to be done successfully
       - configure-infrastructure:
@@ -426,10 +424,10 @@ workflows:
 
       - deploy-frontend:
           requires: [run-migrations]
-
       - deploy-backend:
           requires: [run-migrations]
-
+      - smoke-test:
+          requires: [deploy-frontend, deploy-backend]
 
           
 ############### .......... for Notification .......... ###################
