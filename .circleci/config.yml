@@ -369,8 +369,8 @@ jobs:
 
             if curl -s "${API_URL}/api/status" | grep "ok"
             then
-              exit 0
               echo "backend is working successfully"
+              exit 0
             else
               exit 1
             fi
@@ -382,8 +382,8 @@ jobs:
             if curl -s ${URL} | grep "Welcome"
             then
                 # Change this to 0 after the job fails
-              exit 1
               echo "Frontend is working successfully"
+              exit 1
             else
               exit 1
             fi
