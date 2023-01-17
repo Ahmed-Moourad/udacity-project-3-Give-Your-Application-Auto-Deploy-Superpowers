@@ -434,7 +434,7 @@ jobs:
             unzip awscliv2.zip
             sudo ./aws/install
       - run:
-          name: Get old stack workflow id
+          name: Get old stack workflow id and Remove old stacks and files
           command: |
             # Fetch the Old workflow ID
             export OldWorkflowID=$(aws cloudformation \
@@ -448,9 +448,7 @@ jobs:
                     --stack-status-filter CREATE_COMPLETE --no-paginate --output text)) 
             echo Stack names: "${STACKS[@]}"       
             
-      - run:
-          name: Remove old stacks and files
-          command: |
+            echo "....................................................................."
             echo $OldWorkflowID
             echo $CIRCLE_WORKFLOW_ID
             if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
