@@ -204,7 +204,7 @@ jobs:
             apk add openssh-client
               #alpine doesn't have ssh
       - run:
-          name: Configure server and #install the node_exporter for Prometheus
+          name: Configure server and install the node_exporter for Prometheus
           command: |
             cd .circleci/ansible
             ansible-playbook -i inventory.txt configure-server.yml
