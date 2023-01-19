@@ -204,12 +204,13 @@ jobs:
             apk add openssh-client
               #alpine doesn't have ssh
       - run:
-          name: Configure server
+          name: Configure server and #install the node_exporter for Prometheus
           command: |
             cd .circleci/ansible
             ansible-playbook -i inventory.txt configure-server.yml
 
       - destroy-environment      
+
   
   run-migrations:       # ERORRS here comes from Database (make sure it's avilable and connect to it && make the jobs runs Sequentially )  and KVDB (refresh the bucket you created there)
     docker:
